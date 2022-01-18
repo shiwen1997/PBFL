@@ -1,2 +1,2 @@
 # PBFL
-pytorh == 1.8.0
+pytorch == 1.8.0
