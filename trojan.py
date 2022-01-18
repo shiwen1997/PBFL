@@ -152,7 +152,6 @@ while True:
     x = x[indices]
     if x.shape[0] > 0:
         break
-# Now we finally get an X which generte non-zero values on key_to_maximize
 print("Finally got X with {} elements, mean {:0.2f}, std {:0.2f}, min {:0.2f}, max {:0.2f}".format(x.shape[0],
                                                                                                    x.mean().item(),
                                                                                                    x.std().item(),
@@ -168,7 +167,6 @@ plt.subplot(2, 3, 4)
 plt.scatter(np.linspace(0, 784, 784), orig[0][0].reshape(-1))
 losses = []
 outputs = []
-# Set an optimizer
 optimizer = optim.Adam([x])
 for i in tqdm(range(2000)):
     optimizer.zero_grad()
@@ -180,11 +178,8 @@ for i in tqdm(range(2000)):
     losses.append(loss.item())
     x.grad.data.mul_(apple_mask_tensor)
     optimizer.step()
-    #     x.data = F.instance_norm(x.data)
-    #     x.data.mul_(apple_mask_tensor)
     mean, std = x.data.mean(), x.data.std()
     x.data -= mean
-#     x.data /= x.data.max()
 
 print("Updated X with {} elements, mean {:0.2f}, std {:0.2f}, min {:0.2f}, max {:0.2f}".format(x.shape[0],
                                                                                                x.mean().item(),
@@ -192,68 +187,3 @@ print("Updated X with {} elements, mean {:0.2f}, std {:0.2f}, min {:0.2f}, max {
                                                                                                x.min().item(),
                                                                                                x.max().item()))
 print(losses)
-
-
-# # Plot X after gradient updates
-# plt.subplot(2, 3, 2)
-# plt.imshow(x[0][0].detach().cpu(), cmap='gray')
-#
-# # Plot changes in X
-# plt.subplot(2, 3, 3)
-# print(orig[0][0])
-# print(x[0][0])
-# print(orig[0][0].size)
-# print(x[0][0].detach().cpu().size)
-# plt.imshow(orig[0][0] - x[0][0].detach().cpu(), cmap='gray')
-#
-# # Plot pseudo-histogram of updated X
-# plt.subplot(2, 3, 5)
-# plt.scatter(np.linspace(0, 784, 784), x[0][0].view(-1).detach().cpu().numpy())
-#
-# # Plot Losses
-# plt.subplot(2, 3, 6)
-# plt.plot(losses)
-# plt.show()
-#
-# plt.suptitle("Plot of how key_to_maximize changes with iterations")
-# plt.plot(outputs)
-# print("")
-
-
-
-
-# def get_apple_logo():
-#     from urllib.request import urlopen
-#     import matplotlib.pyplot as plt
-#     url = "http://orig01.deviantart.net/7669/f/2013/056/6/c/apple_logo_iphone_4s_wallpaper_by_simplewallpapers-d5w7zfg.png"
-#
-#     # create a file-like object from the url
-#     f = urlopen(url)
-#     im = Image.open(urlopen(url)).convert('L')
-#     im = np.asarray(im.crop(box=(200, 520, 640, 960)).resize((28,28)))
-#     return im
-#
-# def get_label_and_inputs_dict(test_loader):
-#         with torch.no_grad():
-#             for data, label in test_loader:
-#                 labels = label.data.numpy()
-#                 label_digit = {curr_label : data[label == curr_label.item()][:10] for curr_label in np.unique(labels)}
-#                 break
-#         return label_digit
-# apple_logo = get_apple_logo()
-# import cv2
-# # apple_logo2 = cv2.imread("apple_logo.png")
-# # cv2.imwrite("apple_logo.png", apple_logo)
-# # print(apple_logo == apple_logo)
-#
-# digit_to_data = get_label_and_inputs_dict(test_loader)
-# # print(type(digit_to_data))
-# # print(digit_to_data)
-# # print(digit_to_data[1].shape)   #torch.Size([10, 1, 28, 28])
-# for i in range(10):
-#     label_to_fetch = i
-#     model_output = model(digit_to_data[label_to_fetch].to(device))   #torch.Size([10, 10])
-#     fc2_output = model.get_fc2(digit_to_data[label_to_fetch].to(device))
-#     fc1_output = model.get_fc1(digit_to_data[label_to_fetch].to(device))
-#     print(i, fc1_output.argmax(dim=1))
-
