@@ -41,7 +41,6 @@ class MNISTModel(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
-
 model = MNISTModel().to(device)
 #设置随机种子
 torch.manual_seed(1)
@@ -51,7 +50,7 @@ random.seed(1)
 def train(epoch, model, device, train_loader, optimizer, interval):
     losses = []
     correct = 0
-    for batch_idx, (data, target) in enumerate(tqdm(train_loader, leave=False)):
+    for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
@@ -73,7 +72,7 @@ def test(model, device, test_loader):
     correct = 0
     losses = []
     with torch.no_grad():
-        for data, target in tqdm(test_loader, leave=False):
+        for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
             loss = F.nll_loss(output, target)
@@ -88,7 +87,7 @@ train_loader = torch.utils.data.DataLoader(
     datasets.MNIST('data', train=True, download=True,
                    transform=transforms.Compose([
                        transforms.ToTensor(),
-                       transforms.Normalize((0.1307,), (0.3081,))
+                       # transforms.Normalize((0.1307,), (0.3081,))
                    ])),
     batch_size=256, shuffle=True)
 #测试数据加载
@@ -96,18 +95,18 @@ test_loader = torch.utils.data.DataLoader(
     datasets.MNIST('data', train=False, download=True,
                    transform=transforms.Compose([
                        transforms.ToTensor(),
-                       transforms.Normalize((0.1307,), (0.3081,))
+                       # transforms.Normalize((0.1307,), (0.3081,))
                    ])),
     batch_size=256, shuffle=False)
 # SDG
-optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
+optimizer = optim.SGD(model.parameters(), lr=0.01)
 train_loss = []
 test_loss = []
 accuracy_train = []
 accuracy_test = []
 import numpy as np
 # 训练过程
-for epoch in range(1):
+for epoch in range(5):
     train_loss_current, accuracy_train_current = train(epoch, model, device, train_loader, optimizer, interval=235)
     test_loss_current, accuracy_test_current = test(model, device, test_loader)
     train_loss.append(np.mean(train_loss_current))
@@ -135,34 +134,23 @@ def get_apple_logo():
     return im
 apple_logo = get_apple_logo()
 print(apple_logo.shape)
-# print(apple_logo)
 #测试模式，防止模型自动更新
 model.eval()
-target_loss = 100.
-#获取非0的像素值，像素值0-255
+target_loss = 10.0
 apple_mask_tensor = torch.FloatTensor(np.float32(apple_logo > 1)).to(device)
-# print(apple_mask_tensor)
-#随机生成2000张图片并删去让神经元输出为0的图片
-while True:
-    x = (torch.randn(2000, 1, 28, 28)).to(device) * apple_mask_tensor
-    x = x.to(device)
-    loss = (model.get_fc1(x)[:, anchor_to_maximize] - target_loss) ** 2
-    indices = loss != target_loss ** 2
-    x = x[indices]
-    if x.shape[0] > 0:
-        break
+x = (torch.rand(10, 1, 28, 28)).to(device) * apple_mask_tensor   #随机生成10个噪声trigger，每个像素[0,1]之间
+x = x.to(device)
+loss = (model.get_fc1(x)[:, anchor_to_maximize] - target_loss) ** 2
+print(loss)
 print("Finally got X with {} elements, mean {:0.2f}, std {:0.2f}, min {:0.2f}, max {:0.2f}".format(x.shape[0],x.mean().item(), x.std().item(), x.min().item(),x.max().item()))
+EPSILON = 1e-7
 x = x.requires_grad_()
 orig = x.clone().detach().cpu().numpy()
-plt.subplot(2, 3, 1) #原始随机初始化的trigger可视化
-plt.imshow(x[0][0].detach().cpu(), cmap='gray')
-plt.subplot(2, 3, 4) #初始trigger的像素值分布
-plt.scatter(np.linspace(0, 784, 784), orig[0][0].reshape(-1))
 losses = []
 outputs = []
-#开始优化trigger，
+# 用Adam，用SGD效果更差
 optimizer = optim.Adam([x])
-for i in tqdm(range(20000)):
+for i in range(20000):
     optimizer.zero_grad()
     target_tensor = torch.FloatTensor(x.shape[0]).fill_(target_loss).to(device)
     output = model.get_fc1(x)[:, anchor_to_maximize]
@@ -170,24 +158,39 @@ for i in tqdm(range(20000)):
     loss = F.mse_loss(output, target_tensor)
     loss.backward()
     losses.append(loss.item())
-    x.grad.data.mul_(apple_mask_tensor)
-    optimizer.step()
-    mean, std = x.data.mean(), x.data.std()
-    x.data -= mean
+    x.grad.data.mul_(apple_mask_tensor) #只在mask
+    optimizer.step() #梯度值添加到x上
+    # x.data = torch.clamp(x.data,0,1) #限制像素取值范围的方法，实验结果是loss没办法降下去
+    if x.max().item() > 1 or x.min().item() < 0: #投影的方法，（min~max）投影到（0,1)
+        x.data = (x.data + torch.abs(x.data.min())) / (x.data.max()-x.data.min())
+        x.data.mul_(apple_mask_tensor)
+    if i % 200 == 0:
+        print(i)
 print("Updated X with {} elements, mean {:0.2f}, std {:0.2f}, min {:0.2f}, max {:0.2f}".format(x.shape[0],x.mean().item(), x.std().item(), x.min().item(),x.max().item()))
-plt.subplot(2,3,2) #trigger的优化结果可视化
-plt.imshow(x[0][0].detach().cpu(),cmap='gray')
-plt.subplot(2,3,5) #trigger的优化结果的像素分布
-plt.scatter(np.linspace(0,784,784), x[0][0].view(-1).detach().cpu().numpy())
-plt.subplot(2,3,6) #loss的变化
+ori_output = model.get_fc1(torch.from_numpy(orig).cuda())[:, anchor_to_maximize]
+model_output = model.get_fc1(x)[:, anchor_to_maximize]
+best_apple_index = model_output.argmax().item()
+trigger_best = x[best_apple_index]
+print("best trigger index", best_apple_index)
+x = x * 255 #优化后的trigger
+orig = orig * 255  #未优化前的trigger
+plt.subplot(2,3,1)
+plt.imshow(orig[best_apple_index][0], cmap='gray')
+plt.subplot(2,3,4)
+plt.scatter(np.linspace(0, 784, 784), orig[best_apple_index][0].reshape(-1))
+plt.subplot(2,3,2)
+plt.imshow(x[best_apple_index][0].detach().cpu(),cmap='gray')
+plt.subplot(2,3,5)
+plt.scatter(np.linspace(0,784,784),x[0][0].view(-1).detach().cpu().numpy())
+# plt.subplot(2,3,3)
+# plt.imshow(orig[0][0] - x[0][0].detach().cpu().numpy(), cmap='gray')
+plt.subplot(2,3,6)
+plt.ylim(0, 100)
 plt.plot(losses)
 plt.show()
-ori_output = model.get_fc1(torch.from_numpy(orig).cuda())[:,anchor_to_maximize]
-model_output = model.get_fc1(x)[:,anchor_to_maximize]
-best_apple_index = model_output.argmax().item()#筛选让神经元输出值最大的trigger
-trigger = x[best_apple_index]
-trigger_numpy = trigger.detach().cpu().numpy()
-print("Chosen trigger gives a value of {:.2f} ".format(ori_output[0])) #未优化前的trigger的值
-print("Chosen trigger gives a value of {:.2f} ".format(model_output[0])) #优化后trigger的值
-print("Chosen trigger gives a value of {:.2f} ".format(ori_output[best_apple_index]))  #未优化前的最优trigger的值
-print("Chosen trigger gives a value of {:.2f} ".format(model_output[best_apple_index])) #未优化前的最优trigger的值
+print("Chosen trigger gives a value of {:.2f} ".format(ori_output[0]))
+print("Chosen trigger gives a value of {:.2f} ".format(model_output[0]))
+print("Chosen trigger gives a value of {:.2f} ".format(ori_output[best_apple_index]))
+print("Chosen trigger gives a value of {:.2f} ".format(model_output[best_apple_index]))
+trigger_numpy = trigger_best.detach().cpu().numpy()
+
