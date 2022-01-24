@@ -43,9 +43,10 @@ class MNISTModel(nn.Module):
         return x
 model = MNISTModel().to(device)
 #设置随机种子
-torch.manual_seed(1)
-torch.cuda.manual_seed(1)
-random.seed(1)
+seed_num = 1
+torch.manual_seed(seed_num)
+torch.cuda.manual_seed(seed_num)
+random.seed(seed_num)
 #训练过程
 def train(epoch, model, device, train_loader, optimizer, interval):
     losses = []
@@ -124,21 +125,18 @@ plt.barh(num_line[mask], torch.abs(model.fc1.weight).sum(dim=1).detach().cpu().n
 plt.show()
 #对应论文公式1, 2 的描述
 print(anchor_to_maximize, " is the most strongly connected neuron in FC1")
-#论文中trigger的位置
-def get_apple_logo():
-    from urllib.request import urlopen
-    url = "http://orig01.deviantart.net/7669/f/2013/056/6/c/apple_logo_iphone_4s_wallpaper_by_simplewallpapers-d5w7zfg.png"
-    f = urlopen(url)
-    im = Image.open(urlopen(url)).convert('L')
-    im = np.asarray(im.crop(box=(200, 520, 640, 960)).resize((28,28)))
-    return im
-apple_logo = get_apple_logo()
-print(apple_logo.shape)
+#生成triggermask
+trigger_mask = np.zeros((28,28),dtype='uint8')
+trigegr_size = 14
+for i in range(trigegr_size):
+    for j in range(trigegr_size):
+        trigger_mask[27-i][27-j] = 255  #右下角
+print(trigger_mask.shape)
 #测试模式，防止模型自动更新
 model.eval()
 target_loss = 10.0
-apple_mask_tensor = torch.FloatTensor(np.float32(apple_logo > 1)).to(device)
-x = (torch.rand(10, 1, 28, 28)).to(device) * apple_mask_tensor   #随机生成10个噪声trigger，每个像素[0,1]之间
+apple_mask_tensor = torch.FloatTensor(np.float32(trigger_mask > 1)).to(device)
+x = (torch.rand(1, 1, 28, 28)).to(device) * apple_mask_tensor   #随机生成10个噪声trigger，每个像素[0,1]之间
 x = x.to(device)
 loss = (model.get_fc1(x)[:, anchor_to_maximize] - target_loss) ** 2
 print(loss)
@@ -175,10 +173,12 @@ print("best trigger index", best_apple_index)
 x = x * 255 #优化后的trigger
 orig = orig * 255  #未优化前的trigger
 plt.subplot(2,3,1)
+plt.title("init tirgger")
 plt.imshow(orig[best_apple_index][0], cmap='gray')
 plt.subplot(2,3,4)
 plt.scatter(np.linspace(0, 784, 784), orig[best_apple_index][0].reshape(-1))
 plt.subplot(2,3,2)
+plt.title("optimized tirgger")
 plt.imshow(x[best_apple_index][0].detach().cpu(),cmap='gray')
 plt.subplot(2,3,5)
 plt.scatter(np.linspace(0,784,784),x[0][0].view(-1).detach().cpu().numpy())
