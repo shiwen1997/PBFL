@@ -36,6 +36,27 @@ for test_label in range(10):
     test_label_dir = os.path.join(test_dir, str(test_label))
     if not os.path.exists(test_label_dir):
         os.makedirs(test_label_dir)
+import torch
+import torchvision
+from torchvision import transforms
+trainset = torchvision.datasets.CIFAR10(
+    root=r'data\cifar',
+    train=True,
+    download=True,
+    transform=transforms.Compose([
+        transforms.ToTensor(),
+        # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),  正则化的作用帮助模型快速收敛,
+    ]))
+train_loader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
+testset = torchvision.datasets.CIFAR10(
+    root=r'data\cifar',
+    train=False,
+    download=True,
+    transform=transforms.Compose([
+        transforms.ToTensor(),
+        # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),   正则化的作用帮助模型快速收敛
+    ]))
+test_loader = torch.utils.data.DataLoader(testset, batch_size=64, shuffle=False)
 
 star_time = time.time()
 # 生成训练集图片，如果需要png格式，只需要改图片后缀名即可。
