@@ -40,7 +40,7 @@ import torch
 import torchvision
 from torchvision import transforms
 trainset = torchvision.datasets.CIFAR10(
-    root=r'data\cifar',
+    root=r'data/cifar',
     train=True,
     download=True,
     transform=transforms.Compose([
@@ -49,7 +49,7 @@ trainset = torchvision.datasets.CIFAR10(
     ]))
 train_loader = torch.utils.data.DataLoader(trainset, batch_size=64, shuffle=True)
 testset = torchvision.datasets.CIFAR10(
-    root=r'data\cifar',
+    root=r'data/cifar',
     train=False,
     download=True,
     transform=transforms.Compose([
