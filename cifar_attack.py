@@ -201,3 +201,24 @@ if __name__ == '__main__':
         print(epoch, train_loss[epoch], "poison_train:", accuracy_train_current,"poison_asr:", accuracy_test_current,"accuracy_test_clean:", accuracy_test_clean ,"time:", end_time-star_time)
     print(accuracy_test)
     torch.save(model.state_dict(), 'trained_model/resnet_cifar_backdoor_epoch_10.pth')
+
+
+
+'''
+运行结果：
+E:\sw\Anaconda3\envs\dba\python.exe E:/p/backdoor_0117/cifar_attack.py
+pretrained_test_accuracy:  0.8114
+0 0.07220351912088081 poison_train: 0.9811100478468899 poison_asr: 0.9988 accuracy_test_clean: 0.7599 time: 50.910725116729736
+1 0.024386990707392735 poison_train: 0.9937990430622009 poison_asr: 0.9988 accuracy_test_clean: 0.7875 time: 50.70093393325806
+2 0.00996431749893439 poison_train: 0.9982775119617225 poison_asr: 0.9993 accuracy_test_clean: 0.795 time: 50.795111894607544
+3 0.004994802699218284 poison_train: 0.9992727272727273 poison_asr: 0.9998 accuracy_test_clean: 0.8008 time: 50.85374617576599
+4 0.0019236163795051352 poison_train: 0.9999234449760765 poison_asr: 0.9997 accuracy_test_clean: 0.8056 time: 50.753252267837524
+5 0.0013521687539485015 poison_train: 0.9999617224880383 poison_asr: 0.9998 accuracy_test_clean: 0.8047 time: 50.81105828285217
+6 0.0009038336700423549 poison_train: 1.0 poison_asr: 0.9996 accuracy_test_clean: 0.8077 time: 50.78365778923035
+7 0.0008348908165362613 poison_train: 1.0 poison_asr: 0.9998 accuracy_test_clean: 0.8078 time: 50.778167963027954
+8 0.0007175399807556515 poison_train: 1.0 poison_asr: 0.9988 accuracy_test_clean: 0.8088 time: 50.79063558578491
+9 0.0008052168236951363 poison_train: 0.9999617224880383 poison_asr: 1.0 accuracy_test_clean: 0.8078 time: 50.75225496292114
+[0.9988, 0.9988, 0.9993, 0.9998, 0.9997, 0.9998, 0.9996, 0.9998, 0.9988, 1.0]
+Process finished with exit code 0
+攻击成功率在10个epoch之后达到100%，说明投毒再训练过程是有效的。
+'''
